@@ -6,6 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"reflect"
+	"unsafe"
+
+	"github.com/koykov/fastconv"
 )
 
 const (
@@ -26,6 +30,14 @@ const (
 	bufLen           = bufPadLen + bufPayloadLen + bufSignLen
 
 	hextable = "0123456789abcdef"
+
+	uuidDashPosTimeLow      = 4
+	uuidDashPosTimeMid      = 6
+	uuidDashPosTimeHiAndVer = 8
+	uuidDashPosClockSeq     = 10
+	uuidLen                 = 36
+	uuidBufOffset           = 16
+	uuidBufLen              = 36
 )
 
 type DoubleClick struct {
@@ -33,6 +45,8 @@ type DoubleClick struct {
 
 	buf, encryptionKey, integrityKey []byte
 }
+
+type AdvertisingID []byte
 
 var (
 	ErrBadMsgLen     = errors.New(fmt.Sprintf("message length must be %d", msgLen))
@@ -51,25 +65,16 @@ func (d *DoubleClick) SetKeys(encryptionKey, integrityKey []byte) {
 	d.encryptionKey, d.integrityKey = encryptionKey, integrityKey
 }
 
-func (d *DoubleClick) Decrypt(encryptedID []byte) ([]byte, error) {
-	var dst []byte
-	return d.decrypt(dst, encryptedID, false)
+func (d *DoubleClick) Decrypt(encryptedID []byte) (AdvertisingID, error) {
+	var dst AdvertisingID
+	return d.decrypt(dst, encryptedID)
 }
 
-func (d *DoubleClick) DecryptUUID(encryptedID []byte) ([]byte, error) {
-	var dst []byte
-	return d.decrypt(dst, encryptedID, true)
+func (d *DoubleClick) AppendDecrypt(dst, encryptedID []byte) (AdvertisingID, error) {
+	return d.decrypt(dst, encryptedID)
 }
 
-func (d *DoubleClick) AppendDecrypt(dst, encryptedID []byte) ([]byte, error) {
-	return d.decrypt(dst, encryptedID, false)
-}
-
-func (d *DoubleClick) AppendDecryptUUID(dst, encryptedID []byte) ([]byte, error) {
-	return d.decrypt(dst, encryptedID, true)
-}
-
-func (d *DoubleClick) decrypt(dst, encryptedID []byte, uuid bool) ([]byte, error) {
+func (d *DoubleClick) decrypt(dst, encryptedID []byte) (AdvertisingID, error) {
 	if len(encryptedID) != msgLen {
 		return dst, ErrBadMsgLen
 	}
@@ -113,24 +118,39 @@ func (d *DoubleClick) decrypt(dst, encryptedID []byte, uuid bool) ([]byte, error
 		return dst, ErrSignCheckFail
 	}
 
-	if uuid {
-		// Convert payload to uuid.
-		for i := 0; i < bufPayloadLen; i++ {
-			switch i {
-			case 4, 6, 8, 10:
-				dst = append(dst, '-')
-			}
-			dst = append(dst, hextable[payload[i]>>4])
-			dst = append(dst, hextable[payload[i]&0x0f])
-		}
-	} else {
-		// Return raw payload.
-		dst = append(dst[:0], payload...)
-	}
-
+	dst = append(dst[:0], payload...)
 	return dst, nil
 }
 
 func (d *DoubleClick) Reset() {
 	d.buf = append(d.buf[:0], resetBuf...)
+}
+
+func (a *AdvertisingID) UUID() []byte {
+	self := (*a)[0:bufPayloadLen]
+	for i := 0; i < bufPayloadLen; i++ {
+		switch i {
+		case uuidDashPosTimeLow, uuidDashPosTimeMid, uuidDashPosTimeHiAndVer, uuidDashPosClockSeq:
+			self = append(self, '-')
+		}
+		self = append(self, hextable[self[i]>>4])
+		self = append(self, hextable[self[i]&0x0f])
+	}
+	copy(self[0:uuidLen], self[uuidBufOffset:uuidBufOffset+uuidBufLen])
+
+	*a = append((*a)[:0], self...)
+	a.resetLen()
+	return *a
+}
+
+func (a *AdvertisingID) resetLen() {
+	h := *(*reflect.SliceHeader)(unsafe.Pointer(a))
+	if h.Cap >= uuidLen {
+		h.Len = uuidLen
+	}
+	*a = *(*[]byte)(unsafe.Pointer(&h))
+}
+
+func (a *AdvertisingID) String() string {
+	return fastconv.B2S(*a)
 }
