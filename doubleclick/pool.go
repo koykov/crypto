@@ -3,32 +3,32 @@ package doubleclick
 import "sync"
 
 type Pool struct {
-	p sync.Pool
+	adid, idfa, price sync.Pool
 }
 
 var P Pool
 
-func (p *Pool) Get(encryptionKey, integrityKey []byte) *DoubleClick {
-	v := p.p.Get()
+func (p *Pool) GetAdID(encryptionKey, integrityKey []byte) *AdID {
+	v := p.adid.Get()
 	if v != nil {
-		if d, ok := v.(*DoubleClick); ok {
-			d.SetKeys(encryptionKey, integrityKey)
-			return d
+		if a, ok := v.(*AdID); ok {
+			a.SetKeys(encryptionKey, integrityKey)
+			return a
 		}
 	}
-	d := New(encryptionKey, integrityKey)
-	return d
+	a := NewAdID(encryptionKey, integrityKey)
+	return a
 }
 
-func (p *Pool) Put(d *DoubleClick) {
-	d.Reset()
-	p.p.Put(d)
+func (p *Pool) PutAdID(a *AdID) {
+	a.Reset()
+	p.adid.Put(a)
 }
 
-func Acquire(encryptionKey, integrityKey []byte) *DoubleClick {
-	return P.Get(encryptionKey, integrityKey)
+func AcquireAdID(encryptionKey, integrityKey []byte) *AdID {
+	return P.GetAdID(encryptionKey, integrityKey)
 }
 
-func Release(b *DoubleClick) {
-	P.Put(b)
+func ReleaseAdID(a *AdID) {
+	P.PutAdID(a)
 }
