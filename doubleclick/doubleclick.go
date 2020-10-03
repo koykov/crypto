@@ -1,4 +1,4 @@
-package double_click
+package doubleclick
 
 import (
 	"crypto/hmac"
