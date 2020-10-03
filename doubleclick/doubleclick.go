@@ -8,8 +8,6 @@ import (
 	"hash"
 	"reflect"
 	"unsafe"
-
-	"github.com/koykov/fastconv"
 )
 
 const (
@@ -152,5 +150,5 @@ func (a *AdvertisingID) resetLen() {
 }
 
 func (a *AdvertisingID) String() string {
-	return fastconv.B2S(*a)
+	return string(*a)
 }
