@@ -64,3 +64,50 @@ func BenchmarkDoubleClick_Decrypt(b *testing.B) {
 		d.Reset()
 	}
 }
+
+func benchmarkDecryptParallel(b *testing.B, n int) {
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	b.RunParallel(func(pb *testing.PB) {
+		var (
+			dst AdvertisingID
+			err error
+		)
+		for pb.Next() {
+			for i := 0; i < n; i++ {
+				d := Acquire(encryptionKey, integrityKey)
+
+				dst = dst[:0]
+				dst, err = d.AppendDecrypt(dst, encryptedID)
+				if err != nil {
+					b.Error(err)
+				}
+				if !bytes.Equal(dst, decryptedID) {
+					b.Error("decrypt ID failed")
+				}
+				if !bytes.Equal(dst.UUID(), decryptedUUID) {
+					b.Error("decrypt UUID failed")
+				}
+
+				Release(d)
+			}
+		}
+	})
+}
+
+func BenchmarkDoubleClick_DecryptParallel1(b *testing.B) {
+	benchmarkDecryptParallel(b, 1)
+}
+
+func BenchmarkDoubleClick_DecryptParallel10(b *testing.B) {
+	benchmarkDecryptParallel(b, 10)
+}
+
+func BenchmarkDoubleClick_DecryptParallel100(b *testing.B) {
+	benchmarkDecryptParallel(b, 100)
+}
+
+func BenchmarkDoubleClick_DecryptParallel1000(b *testing.B) {
+	benchmarkDecryptParallel(b, 1000)
+}
