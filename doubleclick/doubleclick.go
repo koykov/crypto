@@ -8,6 +8,9 @@ import (
 )
 
 const (
+	TypeAdID Type = iota
+	TypeIDFA
+
 	initVectorOffset = 0
 	initVectorLen    = 16
 	cipherOffset     = 16
@@ -18,29 +21,73 @@ const (
 	bufPayloadOffset = 20
 	bufSignLen       = 20 // integrity signature needs only 4 bytes buffer, but hmac makes 20-bytes array by default
 
-	hextable = "0123456789abcdef"
+	msgLenAdID     = 36
+	payloadLenAdID = 16
 
-	uuidDashPosTimeLow      = 4
-	uuidDashPosTimeMid      = 6
-	uuidDashPosTimeHiAndVer = 8
-	uuidDashPosClockSeq     = 10
+	msgLenIDFA     = 28
+	payloadLenIDFA = 8
 )
 
+type Type int
+
+type ConvFn func(dst, src []byte) []byte
+
 type DoubleClick struct {
+	typ          Type
 	hmacE, hmacI hash.Hash
 
 	buf, encryptionKey, integrityKey []byte
 }
 
 var (
+	ErrUnkType       = errors.New("unknown decryptor type")
+	ErrBadMsgLen     = errors.New("unsupported message length")
 	ErrSignCheckFail = errors.New("signature check failed")
 )
+
+func New(typ Type, encryptionKey, integrityKey []byte) *DoubleClick {
+	d := &DoubleClick{typ: typ}
+	d.SetKeys(encryptionKey, integrityKey)
+	return d
+}
 
 func (d *DoubleClick) SetKeys(encryptionKey, integrityKey []byte) {
 	d.encryptionKey, d.integrityKey = encryptionKey, integrityKey
 }
 
-func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int) ([]byte, error) {
+func (d *DoubleClick) Decrypt(dst, cipher []byte) ([]byte, error) {
+	return d.DecryptFn(dst, cipher, nil)
+}
+
+func (d *DoubleClick) DecryptFn(dst, cipher []byte, convFn ConvFn) ([]byte, error) {
+	var (
+		msgLen, payloadLen int
+	)
+	switch d.typ {
+	case TypeAdID:
+		msgLen = msgLenAdID
+		payloadLen = payloadLenAdID
+	case TypeIDFA:
+		msgLen = msgLenIDFA
+		payloadLen = payloadLenIDFA
+	default:
+		return dst, ErrUnkType
+	}
+
+	if len(cipher) != msgLen {
+		return dst, ErrBadMsgLen
+	}
+
+	var err error
+	dst, err = d.decrypt(dst, cipher, payloadLen, convFn)
+	if err != nil {
+		return dst, err
+	}
+
+	return dst, nil
+}
+
+func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int, convFn ConvFn) ([]byte, error) {
 	initVector := cipher[initVectorOffset:initVectorLen]
 	cipherText := cipher[cipherOffset : cipherOffset+payloadLen]
 	integritySignOffset := cipherOffset + payloadLen
@@ -83,6 +130,17 @@ func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int) ([]byte, error
 		return dst, ErrSignCheckFail
 	}
 
-	dst = append(dst[:0], payload...)
+	if convFn != nil {
+		dst = convFn(dst, payload)
+	} else {
+		dst = append(dst, payload...)
+	}
 	return dst, nil
+}
+
+func (d *DoubleClick) Reset() {
+	_ = d.buf[len(d.buf)-1]
+	for i := range d.buf {
+		d.buf[i] = 0
+	}
 }

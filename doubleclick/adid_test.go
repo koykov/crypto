@@ -15,26 +15,26 @@ var (
 )
 
 func TestAdID_Decrypt(t *testing.T) {
-	d := NewAdID(encryptionKey, integrityKey)
+	d := New(TypeAdID, encryptionKey, integrityKey)
 	var (
 		dst []byte
 		err error
 	)
-	dst, err = d.Decrypt(dst, encryptedAdID, false)
+	dst, err = d.Decrypt(dst, encryptedAdID)
 	if err != nil {
 		t.Error(err)
 	}
 	if !bytes.Equal(dst, decryptedAdID) {
 		t.Error("decrypt AdID failed")
 	}
-	dst, _ = d.Decrypt(dst[:0], encryptedAdID, true)
+	dst, _ = d.DecryptFn(dst[:0], encryptedAdID, ConvPayloadToUUID)
 	if !bytes.Equal(dst, decryptedAdUUID) {
 		t.Error("decrypt AdID UUID failed")
 	}
 }
 
 func BenchmarkAdID_Decrypt(b *testing.B) {
-	d := NewAdID(encryptionKey, integrityKey)
+	d := New(TypeAdID, encryptionKey, integrityKey)
 	var (
 		dst []byte
 		err error
@@ -43,7 +43,7 @@ func BenchmarkAdID_Decrypt(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		dst = dst[:0]
-		dst, err = d.Decrypt(dst, encryptedAdID, true)
+		dst, err = d.DecryptFn(dst, encryptedAdID, ConvPayloadToUUID)
 		if err != nil {
 			b.Error(err)
 		}
@@ -65,10 +65,10 @@ func benchmarkAdIDDecryptParallel(b *testing.B, n int) {
 		)
 		for pb.Next() {
 			for i := 0; i < n; i++ {
-				a := AcquireAdID(encryptionKey, integrityKey)
+				d := Acquire(TypeAdID, encryptionKey, integrityKey)
 
 				dst = dst[:0]
-				dst, err = a.Decrypt(dst, encryptedAdID, true)
+				dst, err = d.DecryptFn(dst, encryptedAdID, ConvPayloadToUUID)
 				if err != nil {
 					b.Error(err)
 				}
@@ -76,7 +76,7 @@ func benchmarkAdIDDecryptParallel(b *testing.B, n int) {
 					b.Error("decrypt AdID failed")
 				}
 
-				ReleaseAdID(a)
+				Release(d)
 			}
 		}
 	})
