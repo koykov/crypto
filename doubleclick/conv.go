@@ -9,6 +9,8 @@ const (
 	dashPosClockSeq     = 10
 )
 
+type ConvFn func(dst, src []byte) []byte
+
 // Convert payload to UUID.
 func ConvPayloadToUUID(dst, src []byte) []byte {
 	_ = src[len(src)-1]

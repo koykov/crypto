@@ -13,7 +13,7 @@ var (
 	decryptedIDFA = []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}
 )
 
-func TestIDFA_Decrypt(t *testing.T) {
+func TestDecryptIDFA(t *testing.T) {
 	d := New(TypeIDFA, encryptionKey, integrityKey)
 	var (
 		dst []byte
@@ -28,7 +28,7 @@ func TestIDFA_Decrypt(t *testing.T) {
 	}
 }
 
-func BenchmarkIDFA_Decrypt(b *testing.B) {
+func BenchmarkDecryptIDFA(b *testing.B) {
 	d := New(TypeIDFA, encryptionKey, integrityKey)
 	var (
 		dst []byte
@@ -77,18 +77,18 @@ func benchmarkIDFADecryptParallel(b *testing.B, n int) {
 	})
 }
 
-func BenchmarkIDFA_DecryptParallel1(b *testing.B) {
+func BenchmarkDecryptIDFAParallel1(b *testing.B) {
 	benchmarkIDFADecryptParallel(b, 1)
 }
 
-func BenchmarkIDFA_DecryptParallel10(b *testing.B) {
+func BenchmarkDecryptIDFAParallel10(b *testing.B) {
 	benchmarkIDFADecryptParallel(b, 10)
 }
 
-func BenchmarkIDFA_DecryptParallel100(b *testing.B) {
+func BenchmarkDecryptIDFAParallel100(b *testing.B) {
 	benchmarkIDFADecryptParallel(b, 100)
 }
 
-func BenchmarkIDFA_DecryptParallel1000(b *testing.B) {
+func BenchmarkDecryptIDFAParallel1000(b *testing.B) {
 	benchmarkIDFADecryptParallel(b, 1000)
 }

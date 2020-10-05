@@ -10,6 +10,7 @@ import (
 const (
 	TypeAdID Type = iota
 	TypeIDFA
+	TypePrice
 
 	initVectorOffset = 0
 	initVectorLen    = 16
@@ -26,11 +27,12 @@ const (
 
 	msgLenIDFA     = 28
 	payloadLenIDFA = 8
+
+	msgLenPrice     = 28
+	payloadLenPrice = 8
 )
 
 type Type int
-
-type ConvFn func(dst, src []byte) []byte
 
 type DoubleClick struct {
 	typ          Type
@@ -70,6 +72,9 @@ func (d *DoubleClick) DecryptFn(dst, cipher []byte, convFn ConvFn) ([]byte, erro
 	case TypeIDFA:
 		msgLen = msgLenIDFA
 		payloadLen = payloadLenIDFA
+	case TypePrice:
+		msgLen = msgLenPrice
+		payloadLen = payloadLenPrice
 	default:
 		return dst, ErrUnkType
 	}

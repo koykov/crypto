@@ -14,7 +14,7 @@ var (
 	decryptedAdUUID = []byte("00010203-0405-0607-0809-0a0b0c0d0e0f")
 )
 
-func TestAdID_Decrypt(t *testing.T) {
+func TestDecryptAdID(t *testing.T) {
 	d := New(TypeAdID, encryptionKey, integrityKey)
 	var (
 		dst []byte
@@ -33,7 +33,7 @@ func TestAdID_Decrypt(t *testing.T) {
 	}
 }
 
-func BenchmarkAdID_Decrypt(b *testing.B) {
+func BenchmarkDecryptAdID(b *testing.B) {
 	d := New(TypeAdID, encryptionKey, integrityKey)
 	var (
 		dst []byte
@@ -82,18 +82,18 @@ func benchmarkAdIDDecryptParallel(b *testing.B, n int) {
 	})
 }
 
-func BenchmarkAdID_DecryptParallel1(b *testing.B) {
+func BenchmarkDecryptAdIDParallel1(b *testing.B) {
 	benchmarkAdIDDecryptParallel(b, 1)
 }
 
-func BenchmarkAdID_DecryptParallel10(b *testing.B) {
+func BenchmarkDecryptAdIDParallel10(b *testing.B) {
 	benchmarkAdIDDecryptParallel(b, 10)
 }
 
-func BenchmarkAdID_DecryptParallel100(b *testing.B) {
+func BenchmarkDecryptAdIDParallel100(b *testing.B) {
 	benchmarkAdIDDecryptParallel(b, 100)
 }
 
-func BenchmarkAdID_DecryptParallel1000(b *testing.B) {
+func BenchmarkDecryptAdIDParallel1000(b *testing.B) {
 	benchmarkAdIDDecryptParallel(b, 1000)
 }
