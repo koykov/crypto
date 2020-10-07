@@ -98,6 +98,22 @@ func (d *DoubleClick) EncryptFn(dst, initVec, plain []byte, convFn ConvFn) ([]by
 	return d.encrypt(dst, initVec, plain, plainLen, convFn)
 }
 
+func (d *DoubleClick) EncryptPrice(price float64, dst, initVec []byte, micros int) ([]byte, error) {
+	// Apply micros.
+	uprice := uint64(price * float64(micros))
+	// Increase buffer with +1 payload length and use extra space as an intermediate destination array.
+	bufLen := bufPadLen + payloadLenPrice + bufSignLen
+	doubleBufLen := bufLen + 8
+	if len(d.buf) < doubleBufLen {
+		d.buf = append(d.buf, make([]byte, doubleBufLen-len(d.buf))...)
+	}
+	bprice := d.buf[bufLen:doubleBufLen]
+	binary.BigEndian.PutUint64(bprice, uprice)
+
+	d.typ = TypePrice
+	return d.EncryptFn(dst, initVec, bprice, nil)
+}
+
 func (d *DoubleClick) encrypt(dst, initVec, plain []byte, plainLen int, convFn ConvFn) ([]byte, error) {
 	if len(initVec) != initVectorLen {
 		return dst, ErrBadInitvLen
@@ -173,7 +189,7 @@ func (d *DoubleClick) DecryptFn(dst, cipher []byte, convFn ConvFn) ([]byte, erro
 	return d.decrypt(dst, cipher, payloadLen, convFn)
 }
 
-func (d *DoubleClick) DecryptPrice(cipher []byte, micros float64) (float64, error) {
+func (d *DoubleClick) DecryptPrice(cipher []byte, micros int) (float64, error) {
 	// Increase buffer with +1 payload length and use extra space as a destination array.
 	bufLen := bufPadLen + payloadLenPrice + bufSignLen
 	doubleBufLen := bufLen + payloadLenPrice
@@ -188,7 +204,7 @@ func (d *DoubleClick) DecryptPrice(cipher []byte, micros float64) (float64, erro
 	}
 
 	price := binary.BigEndian.Uint64(decrypted)
-	return float64(price) / micros, nil
+	return float64(price) / float64(micros), nil
 }
 
 func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int, convFn ConvFn) ([]byte, error) {

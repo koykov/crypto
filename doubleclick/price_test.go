@@ -1,6 +1,7 @@
 package doubleclick
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -10,7 +11,7 @@ var (
 		0xcd, 0xef, 0xe9, 0x8d, 0xcb, 0x45, 0x53, 0x28, 0xf6, 0xc1, 0xde, 0x8e, 0x42, 0x31,
 	}
 	decryptedPrice = 1.2
-	micros         = 1e6
+	micros         = int(1e6)
 )
 
 func TestDecryptPrice(t *testing.T) {
@@ -25,6 +26,21 @@ func TestDecryptPrice(t *testing.T) {
 	}
 	if price != decryptedPrice {
 		t.Error("decrypt price failed")
+	}
+}
+
+func TestEncryptPrice(t *testing.T) {
+	d := New(TypePrice, encryptionKey, integrityKey)
+	var (
+		dst []byte
+		err error
+	)
+	dst, err = d.EncryptPrice(decryptedPrice, dst, initVector, micros)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(dst, encryptedPrice) {
+		t.Error("encrypt price failed")
 	}
 }
 
@@ -43,6 +59,27 @@ func BenchmarkDecryptPrice(b *testing.B) {
 		}
 		if price != decryptedPrice {
 			b.Error("decrypt price failed")
+		}
+		d.Reset()
+	}
+}
+
+func BenchmarkEncryptPrice(b *testing.B) {
+	d := New(TypePrice, encryptionKey, integrityKey)
+	var (
+		dst []byte
+		err error
+	)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		dst = dst[:0]
+		dst, err = d.EncryptPrice(decryptedPrice, dst, initVector, micros)
+		if err != nil {
+			b.Error(err)
+		}
+		if !bytes.Equal(dst, encryptedPrice) {
+			b.Error("encrypt price failed")
 		}
 		d.Reset()
 	}
@@ -89,4 +126,48 @@ func BenchmarkDecryptPriceParallel100(b *testing.B) {
 
 func BenchmarkDecryptPriceParallel1000(b *testing.B) {
 	benchmarkPriceDecryptParallel(b, 1000)
+}
+
+func benchmarkPriceEncryptParallel(b *testing.B, n int) {
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	b.RunParallel(func(pb *testing.PB) {
+		var (
+			dst []byte
+			err error
+		)
+		for pb.Next() {
+			for i := 0; i < n; i++ {
+				d := Acquire(TypePrice, encryptionKey, integrityKey)
+
+				dst = dst[:0]
+				dst, err = d.EncryptPrice(decryptedPrice, dst, initVector, micros)
+				if err != nil {
+					b.Error(err)
+				}
+				if !bytes.Equal(dst, encryptedPrice) {
+					b.Error("encrypt price failed")
+				}
+
+				Release(d)
+			}
+		}
+	})
+}
+
+func BenchmarkEncryptPriceParallel1(b *testing.B) {
+	benchmarkPriceEncryptParallel(b, 1)
+}
+
+func BenchmarkEncryptPriceParallel10(b *testing.B) {
+	benchmarkPriceEncryptParallel(b, 10)
+}
+
+func BenchmarkEncryptPriceParallel100(b *testing.B) {
+	benchmarkPriceEncryptParallel(b, 100)
+}
+
+func BenchmarkEncryptPriceParallel1000(b *testing.B) {
+	benchmarkPriceEncryptParallel(b, 1000)
 }
