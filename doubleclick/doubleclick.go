@@ -12,6 +12,7 @@ const (
 	TypeAdID Type = iota
 	TypeIDFA
 	TypePrice
+	TypeHyperlocal
 
 	initVectorOffset = 0
 	initVectorLen    = 16
@@ -28,6 +29,9 @@ const (
 
 	msgLenIDFA     = 28
 	payloadLenIDFA = 8
+
+	msgLenHyperlocal     = 32
+	payloadLenHyperlocal = 12
 
 	msgLenPrice     = 28
 	payloadLenPrice = 8
@@ -76,6 +80,9 @@ func (d *DoubleClick) DecryptFn(dst, cipher []byte, convFn ConvFn) ([]byte, erro
 	case TypePrice:
 		msgLen = msgLenPrice
 		payloadLen = payloadLenPrice
+	case TypeHyperlocal:
+		msgLen = msgLenHyperlocal
+		payloadLen = payloadLenHyperlocal
 	default:
 		return dst, ErrUnkType
 	}
