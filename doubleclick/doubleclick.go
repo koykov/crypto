@@ -48,6 +48,7 @@ type DoubleClick struct {
 
 var (
 	ErrUnkType       = errors.New("unknown decryptor type")
+	ErrBadInitvLen   = errors.New("unsupported init vector length")
 	ErrBadMsgLen     = errors.New("unsupported message length")
 	ErrBadPlainLen   = errors.New("unsupported plain source length")
 	ErrSignCheckFail = errors.New("signature check failed")
@@ -98,6 +99,10 @@ func (d *DoubleClick) EncryptFn(dst, initVec, plain []byte, convFn ConvFn) ([]by
 }
 
 func (d *DoubleClick) encrypt(dst, initVec, plain []byte, plainLen int, convFn ConvFn) ([]byte, error) {
+	if len(initVec) != initVectorLen {
+		return dst, ErrBadInitvLen
+	}
+
 	// Prepare buffer.
 	bufLen := bufPadLen + plainLen + bufSignLen
 	if len(d.buf) < bufLen {
@@ -127,6 +132,11 @@ func (d *DoubleClick) encrypt(dst, initVec, plain []byte, plainLen int, convFn C
 	dst = append(dst[:0], initVec...)
 	dst = append(dst, cipher...)
 	dst = append(dst, computedSign...)
+
+	if convFn != nil {
+		d.buf = append(d.buf[:0], dst...)
+		dst = convFn(dst[:0], d.buf)
+	}
 
 	return dst, nil
 }
