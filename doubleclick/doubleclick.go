@@ -49,6 +49,7 @@ type DoubleClick struct {
 var (
 	ErrUnkType       = errors.New("unknown decryptor type")
 	ErrBadMsgLen     = errors.New("unsupported message length")
+	ErrBadPlainLen   = errors.New("unsupported plain source length")
 	ErrSignCheckFail = errors.New("signature check failed")
 )
 
@@ -60,6 +61,74 @@ func New(typ Type, encryptionKey, integrityKey []byte) *DoubleClick {
 
 func (d *DoubleClick) SetKeys(encryptionKey, integrityKey []byte) {
 	d.encryptionKey, d.integrityKey = encryptionKey, integrityKey
+	// Init encryption hmac.
+	if d.hmacE == nil {
+		d.hmacE = hmac.New(sha1.New, d.encryptionKey)
+	}
+	// Init integrity hmac.
+	if d.hmacI == nil {
+		d.hmacI = hmac.New(sha1.New, d.integrityKey)
+	}
+}
+
+func (d *DoubleClick) Encrypt(dst, initVec, plain []byte) ([]byte, error) {
+	return d.EncryptFn(dst, initVec, plain, nil)
+}
+
+func (d *DoubleClick) EncryptFn(dst, initVec, plain []byte, convFn ConvFn) ([]byte, error) {
+	var plainLen int
+	switch d.typ {
+	case TypeAdID:
+		plainLen = payloadLenAdID
+	case TypeIDFA:
+		plainLen = payloadLenIDFA
+	case TypePrice:
+		plainLen = payloadLenPrice
+	case TypeHyperlocal:
+		plainLen = payloadLenHyperlocal
+	default:
+		return dst, ErrUnkType
+	}
+
+	if len(plain) != plainLen {
+		return dst, ErrBadPlainLen
+	}
+
+	return d.encrypt(dst, initVec, plain, plainLen, convFn)
+}
+
+func (d *DoubleClick) encrypt(dst, initVec, plain []byte, plainLen int, convFn ConvFn) ([]byte, error) {
+	// Prepare buffer.
+	bufLen := bufPadLen + plainLen + bufSignLen
+	if len(d.buf) < bufLen {
+		d.buf = append(d.buf, make([]byte, bufLen-len(d.buf))...)
+	}
+
+	// Compute pad.
+	pad := d.buf[bufPadOffset:bufPadLen]
+	d.hmacE.Reset()
+	d.hmacE.Write(initVec)
+	pad = d.hmacE.Sum(pad[:0])[:initVectorLen]
+
+	// Apply xor to do encryption.
+	cipher := d.buf[bufPayloadOffset : bufPayloadOffset+plainLen]
+	for i := 0; i < plainLen; i++ {
+		cipher[i] = pad[i] ^ plain[i]
+	}
+
+	// Compute signature.
+	bufSignOffset := bufPayloadOffset + plainLen
+	computedSign := d.buf[bufSignOffset : bufSignOffset+bufSignLen]
+	d.hmacI.Reset()
+	d.hmacI.Write(plain)
+	d.hmacI.Write(initVec)
+	computedSign = d.hmacI.Sum(computedSign[:0])[:integritySignLen]
+
+	dst = append(dst[:0], initVec...)
+	dst = append(dst, cipher...)
+	dst = append(dst, computedSign...)
+
+	return dst, nil
 }
 
 func (d *DoubleClick) Decrypt(dst, cipher []byte) ([]byte, error) {
@@ -91,13 +160,7 @@ func (d *DoubleClick) DecryptFn(dst, cipher []byte, convFn ConvFn) ([]byte, erro
 		return dst, ErrBadMsgLen
 	}
 
-	var err error
-	dst, err = d.decrypt(dst, cipher, payloadLen, convFn)
-	if err != nil {
-		return dst, err
-	}
-
-	return dst, nil
+	return d.decrypt(dst, cipher, payloadLen, convFn)
 }
 
 func (d *DoubleClick) DecryptPrice(cipher []byte, micros float64) (float64, error) {
@@ -130,10 +193,6 @@ func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int, convFn ConvFn)
 		d.buf = append(d.buf, make([]byte, bufLen-len(d.buf))...)
 	}
 
-	// Init encryption hmac.
-	if d.hmacE == nil {
-		d.hmacE = hmac.New(sha1.New, d.encryptionKey)
-	}
 	// Compute pad.
 	pad := d.buf[bufPadOffset:bufPadLen]
 	d.hmacE.Reset()
@@ -146,10 +205,6 @@ func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int, convFn ConvFn)
 		payload[i] = cipherText[i] ^ pad[i]
 	}
 
-	// Init encryption hmac.
-	if d.hmacI == nil {
-		d.hmacI = hmac.New(sha1.New, d.integrityKey)
-	}
 	// Compute signature.
 	bufSignOffset := bufPayloadOffset + payloadLen
 	computedSign := d.buf[bufSignOffset : bufSignOffset+bufSignLen]

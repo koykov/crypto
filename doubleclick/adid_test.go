@@ -33,6 +33,21 @@ func TestDecryptAdID(t *testing.T) {
 	}
 }
 
+func TestEncryptAdID(t *testing.T) {
+	d := New(TypeAdID, encryptionKey, integrityKey)
+	var (
+		dst []byte
+		err error
+	)
+	dst, err = d.Encrypt(dst, initVector, decryptedAdID)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(dst, encryptedAdID) {
+		t.Error("encrypt AdID failed")
+	}
+}
+
 func BenchmarkDecryptAdID(b *testing.B) {
 	d := New(TypeAdID, encryptionKey, integrityKey)
 	var (
@@ -49,6 +64,27 @@ func BenchmarkDecryptAdID(b *testing.B) {
 		}
 		if !bytes.Equal(dst, decryptedAdUUID) {
 			b.Error("decrypt AdID failed")
+		}
+		d.Reset()
+	}
+}
+
+func BenchmarkEncryptAdID(b *testing.B) {
+	d := New(TypeAdID, encryptionKey, integrityKey)
+	var (
+		dst []byte
+		err error
+	)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		dst = dst[:0]
+		dst, err = d.Encrypt(dst, initVector, decryptedAdID)
+		if err != nil {
+			b.Error(err)
+		}
+		if !bytes.Equal(dst, encryptedAdID) {
+			b.Error("encrypt AdID failed")
 		}
 		d.Reset()
 	}
@@ -96,4 +132,48 @@ func BenchmarkDecryptAdIDParallel100(b *testing.B) {
 
 func BenchmarkDecryptAdIDParallel1000(b *testing.B) {
 	benchmarkAdIDDecryptParallel(b, 1000)
+}
+
+func benchmarkAdIDEncryptParallel(b *testing.B, n int) {
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	b.RunParallel(func(pb *testing.PB) {
+		var (
+			dst []byte
+			err error
+		)
+		for pb.Next() {
+			for i := 0; i < n; i++ {
+				d := Acquire(TypeAdID, encryptionKey, integrityKey)
+
+				dst = dst[:0]
+				dst, err = d.Encrypt(dst, initVector, decryptedAdID)
+				if err != nil {
+					b.Error(err)
+				}
+				if !bytes.Equal(dst, encryptedAdID) {
+					b.Error("encrypt AdID failed")
+				}
+
+				Release(d)
+			}
+		}
+	})
+}
+
+func BenchmarkEncryptAdIDParallel1(b *testing.B) {
+	benchmarkAdIDEncryptParallel(b, 1)
+}
+
+func BenchmarkEncryptAdIDParallel10(b *testing.B) {
+	benchmarkAdIDEncryptParallel(b, 10)
+}
+
+func BenchmarkEncryptAdIDParallel100(b *testing.B) {
+	benchmarkAdIDEncryptParallel(b, 100)
+}
+
+func BenchmarkEncryptAdIDParallel1000(b *testing.B) {
+	benchmarkAdIDEncryptParallel(b, 1000)
 }
