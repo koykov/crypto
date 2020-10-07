@@ -3,6 +3,7 @@ package doubleclick
 import (
 	"crypto/hmac"
 	"crypto/sha1"
+	"encoding/binary"
 	"errors"
 	"hash"
 )
@@ -90,6 +91,24 @@ func (d *DoubleClick) DecryptFn(dst, cipher []byte, convFn ConvFn) ([]byte, erro
 	}
 
 	return dst, nil
+}
+
+func (d *DoubleClick) DecryptPrice(cipher []byte, micros float64) (float64, error) {
+	// Increase buffer with +1 payload length and use extra space as a destination array.
+	bufLen := bufPadLen + payloadLenPrice + bufSignLen
+	doubleBufLen := bufLen + payloadLenPrice
+	if len(d.buf) < doubleBufLen {
+		d.buf = append(d.buf, make([]byte, doubleBufLen-len(d.buf))...)
+	}
+
+	dst := d.buf[bufLen:doubleBufLen]
+	decrypted, err := d.DecryptFn(dst[:0], cipher, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	price := binary.BigEndian.Uint64(decrypted)
+	return float64(price) / micros, nil
 }
 
 func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int, convFn ConvFn) ([]byte, error) {
