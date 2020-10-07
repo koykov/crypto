@@ -28,6 +28,21 @@ func TestDecryptIDFA(t *testing.T) {
 	}
 }
 
+func TestEncryptIDFA(t *testing.T) {
+	d := New(TypeIDFA, encryptionKey, integrityKey)
+	var (
+		dst []byte
+		err error
+	)
+	dst, err = d.Encrypt(dst, initVector, decryptedIDFA)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(dst, encryptedIDFA) {
+		t.Error("encrypt IDFA failed")
+	}
+}
+
 func BenchmarkDecryptIDFA(b *testing.B) {
 	d := New(TypeIDFA, encryptionKey, integrityKey)
 	var (
@@ -44,6 +59,27 @@ func BenchmarkDecryptIDFA(b *testing.B) {
 		}
 		if !bytes.Equal(dst, decryptedIDFA) {
 			b.Error("decrypt IDFA failed")
+		}
+		d.Reset()
+	}
+}
+
+func BenchmarkEncryptIDFA(b *testing.B) {
+	d := New(TypeIDFA, encryptionKey, integrityKey)
+	var (
+		dst []byte
+		err error
+	)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		dst = dst[:0]
+		dst, err = d.Encrypt(dst, initVector, decryptedIDFA)
+		if err != nil {
+			b.Error(err)
+		}
+		if !bytes.Equal(dst, encryptedIDFA) {
+			b.Error("encrypt IDFA failed")
 		}
 		d.Reset()
 	}
@@ -91,4 +127,48 @@ func BenchmarkDecryptIDFAParallel100(b *testing.B) {
 
 func BenchmarkDecryptIDFAParallel1000(b *testing.B) {
 	benchmarkIDFADecryptParallel(b, 1000)
+}
+
+func benchmarkIDFAEncryptParallel(b *testing.B, n int) {
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	b.RunParallel(func(pb *testing.PB) {
+		var (
+			dst []byte
+			err error
+		)
+		for pb.Next() {
+			for i := 0; i < n; i++ {
+				d := Acquire(TypeIDFA, encryptionKey, integrityKey)
+
+				dst = dst[:0]
+				dst, err = d.Encrypt(dst, initVector, decryptedIDFA)
+				if err != nil {
+					b.Error(err)
+				}
+				if !bytes.Equal(dst, encryptedIDFA) {
+					b.Error("encrypt IDFA failed")
+				}
+
+				Release(d)
+			}
+		}
+	})
+}
+
+func BenchmarkEncryptIDFAParallel1(b *testing.B) {
+	benchmarkIDFAEncryptParallel(b, 1)
+}
+
+func BenchmarkEncryptIDFAParallel10(b *testing.B) {
+	benchmarkIDFAEncryptParallel(b, 10)
+}
+
+func BenchmarkEncryptIDFAParallel100(b *testing.B) {
+	benchmarkIDFAEncryptParallel(b, 100)
+}
+
+func BenchmarkEncryptIDFAParallel1000(b *testing.B) {
+	benchmarkIDFAEncryptParallel(b, 1000)
 }
