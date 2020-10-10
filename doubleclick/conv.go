@@ -1,14 +1,16 @@
 package doubleclick
 
 const (
+	// Hex symbols.
 	hextable = "0123456789abcdef"
-
+	// UUID dash positions.
 	dashPosTimeLow      = 4
 	dashPosTimeMid      = 6
 	dashPosTimeHiAndVer = 8
 	dashPosClockSeq     = 10
 )
 
+// The signature of convert function.
 type ConvFn func(dst, src []byte) []byte
 
 // Convert payload to UUID.
