@@ -1,8 +1,10 @@
 package doubleclick
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"hash"
@@ -75,6 +77,9 @@ var (
 	ErrBadMsgLen     = errors.New("unsupported message length")
 	ErrBadPlainLen   = errors.New("unsupported plain source length")
 	ErrSignCheckFail = errors.New("signature check failed")
+	ErrNegativePad   = errors.New("negative base64 pad index")
+
+	b64Pad = []byte("=")
 )
 
 // Make new instance of DoubleClick.
@@ -297,6 +302,52 @@ func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int, convFn ConvFn)
 		// ... or copy payload to destination array.
 		dst = append(dst, payload...)
 	}
+	return dst, nil
+}
+
+func (d *DoubleClick) WebSafeDecode(dst, wsStr []byte) ([]byte, error) {
+	n := len(wsStr)
+	if len(d.buf) < n*2 {
+		d.buf = append(d.buf, make([]byte, n*2)...)
+	}
+	copy(d.buf, wsStr)
+	switch {
+	case n%4 == 2:
+		d.buf[n], d.buf[n+1] = '=', '='
+		n += 2
+	case n%4 == 3:
+		d.buf[n] = '='
+		n++
+	}
+	for i := 0; i < n; i++ {
+		switch d.buf[i] {
+		case '-':
+			d.buf[i] = '+'
+		case '_':
+			d.buf[i] = '/'
+		}
+	}
+
+	k := base64.StdEncoding.DecodedLen(n)
+	c, err := base64.StdEncoding.Decode(d.buf[n:n+k], d.buf[:n])
+	if err != nil {
+		return dst, err
+	}
+	dst = append(dst, d.buf[n:n+c]...)
+	return dst, nil
+}
+
+func (d *DoubleClick) WebSafeEncode(dst, plain []byte) ([]byte, error) {
+	n := base64.StdEncoding.EncodedLen(len(plain))
+	if len(d.buf) < n {
+		d.buf = append(d.buf, make([]byte, n-len(d.buf))...)
+	}
+	base64.StdEncoding.Encode(d.buf, plain)
+	p := bytes.Index(d.buf, b64Pad)
+	if p < 0 {
+		return dst, ErrNegativePad
+	}
+	dst = append(dst[:0], d.buf[:p]...)
 	return dst, nil
 }
 
