@@ -305,12 +305,42 @@ func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int, convFn ConvFn)
 	return dst, nil
 }
 
+// Encode string to web-safe base64.
+//
+// Note that this method will trim base64 paddings.
+func (d *DoubleClick) WebSafeEncode(dst, plain []byte) ([]byte, error) {
+	// Get length of further encoded result.
+	n := base64.StdEncoding.EncodedLen(len(plain))
+	// Prepare buffer.
+	if len(d.buf) < n {
+		d.buf = append(d.buf, make([]byte, n-len(d.buf))...)
+	}
+	// Encode to buffer.
+	base64.StdEncoding.Encode(d.buf, plain)
+	// Get index of base64 padding.
+	p := bytes.Index(d.buf, b64Pad)
+	if p < 0 {
+		return dst, ErrNegativePad
+	}
+	// Fill up destination array with encoded string except paddings.
+	dst = append(dst[:0], d.buf[:p]...)
+	return dst, nil
+}
+
+// Decode web-safe base64 string.
+//
+// Input string must not contain base64 paddings.
 func (d *DoubleClick) WebSafeDecode(dst, wsStr []byte) ([]byte, error) {
 	n := len(wsStr)
+	// Prepare buffer with double length of the input string.
+	// The first half will used to restore base64 paddings.
+	// The second half will used as intermediate destination array.
 	if len(d.buf) < n*2 {
 		d.buf = append(d.buf, make([]byte, n*2)...)
 	}
+	// Copy input string to buffer.
 	copy(d.buf, wsStr)
+	// Restore paddings.
 	switch {
 	case n%4 == 2:
 		d.buf[n], d.buf[n+1] = '=', '='
@@ -319,6 +349,7 @@ func (d *DoubleClick) WebSafeDecode(dst, wsStr []byte) ([]byte, error) {
 		d.buf[n] = '='
 		n++
 	}
+	// Restore + and / symbols.
 	for i := 0; i < n; i++ {
 		switch d.buf[i] {
 		case '-':
@@ -328,26 +359,15 @@ func (d *DoubleClick) WebSafeDecode(dst, wsStr []byte) ([]byte, error) {
 		}
 	}
 
+	// Get potential length of result.
 	k := base64.StdEncoding.DecodedLen(n)
+	// Decode restored string to the second half of buffer and get final length of result.
 	c, err := base64.StdEncoding.Decode(d.buf[n:n+k], d.buf[:n])
 	if err != nil {
 		return dst, err
 	}
+	// Fill up destination array with decoded string.
 	dst = append(dst, d.buf[n:n+c]...)
-	return dst, nil
-}
-
-func (d *DoubleClick) WebSafeEncode(dst, plain []byte) ([]byte, error) {
-	n := base64.StdEncoding.EncodedLen(len(plain))
-	if len(d.buf) < n {
-		d.buf = append(d.buf, make([]byte, n-len(d.buf))...)
-	}
-	base64.StdEncoding.Encode(d.buf, plain)
-	p := bytes.Index(d.buf, b64Pad)
-	if p < 0 {
-		return dst, ErrNegativePad
-	}
-	dst = append(dst[:0], d.buf[:p]...)
 	return dst, nil
 }
 
