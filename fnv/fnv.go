@@ -15,6 +15,17 @@ const (
 	prime64  = uint64(1099511628211)
 )
 
+var (
+	_ = Hash32String
+	_ = Hash32StringLong
+	_ = Hash32aString
+	_ = Hash32aStringLong
+	_ = Hash64String
+	_ = Hash64StringLong
+	_ = Hash64aString
+	_ = Hash64aStringLong
+)
+
 // Fast FNV-1 32 hash calculation.
 func Hash32(p []byte) uint32 {
 	h := offset32
@@ -271,6 +282,7 @@ func Hash64aStringLong(s string) uint64 {
 	return Hash64aLong(s2b(s))
 }
 
+// Fast and alloc-free conversion of string to byte sequence.
 func s2b(s string) []byte {
 	strh := (*reflect.StringHeader)(unsafe.Pointer(&s))
 	var sh reflect.SliceHeader
