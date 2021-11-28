@@ -13,34 +13,35 @@ var (
 	decryptedIDFA = []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}
 )
 
-func TestDecryptIDFA(t *testing.T) {
-	d := New(TypeIDFA, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	dst, err = d.Decrypt(dst, encryptedIDFA)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Equal(dst, decryptedIDFA) {
-		t.Error("decrypt IDFA failed")
-	}
-}
-
-func TestEncryptIDFA(t *testing.T) {
-	d := New(TypeIDFA, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	dst, err = d.Encrypt(dst, initVector, decryptedIDFA)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Equal(dst, encryptedIDFA) {
-		t.Error("encrypt IDFA failed")
-	}
+func TestIDFA(t *testing.T) {
+	t.Run("decrypt", func(t *testing.T) {
+		d := New(TypeIDFA, encryptionKey, integrityKey)
+		var (
+			dst []byte
+			err error
+		)
+		dst, err = d.Decrypt(dst, encryptedIDFA)
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(dst, decryptedIDFA) {
+			t.Error("decrypt IDFA failed")
+		}
+	})
+	t.Run("encrypt", func(t *testing.T) {
+		d := New(TypeIDFA, encryptionKey, integrityKey)
+		var (
+			dst []byte
+			err error
+		)
+		dst, err = d.Encrypt(dst, initVector, decryptedIDFA)
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(dst, encryptedIDFA) {
+			t.Error("encrypt IDFA failed")
+		}
+	})
 }
 
 func BenchmarkDecryptIDFA(b *testing.B) {

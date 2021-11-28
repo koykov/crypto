@@ -15,34 +15,35 @@ var (
 	}
 )
 
-func TestDecryptHyperlocal(t *testing.T) {
-	d := New(TypeHyperlocal, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	dst, err = d.Decrypt(dst, encryptedHyperlocal)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Equal(dst, decryptedHyperlocal) {
-		t.Error("decrypt hyperlocal failed")
-	}
-}
-
-func TestEncryptHyperlocal(t *testing.T) {
-	d := New(TypeHyperlocal, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	dst, err = d.Encrypt(dst, initVector, decryptedHyperlocal)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Equal(dst, encryptedHyperlocal) {
-		t.Error("encrypt hyperlocal failed")
-	}
+func TestHyperlocal(t *testing.T) {
+	t.Run("decrypt", func(t *testing.T) {
+		d := New(TypeHyperlocal, encryptionKey, integrityKey)
+		var (
+			dst []byte
+			err error
+		)
+		dst, err = d.Decrypt(dst, encryptedHyperlocal)
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(dst, decryptedHyperlocal) {
+			t.Error("decrypt hyperlocal failed")
+		}
+	})
+	t.Run("encrypt", func(t *testing.T) {
+		d := New(TypeHyperlocal, encryptionKey, integrityKey)
+		var (
+			dst []byte
+			err error
+		)
+		dst, err = d.Encrypt(dst, initVector, decryptedHyperlocal)
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(dst, encryptedHyperlocal) {
+			t.Error("encrypt hyperlocal failed")
+		}
+	})
 }
 
 func BenchmarkDecryptHyperlocal(b *testing.B) {

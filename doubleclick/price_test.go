@@ -14,34 +14,35 @@ var (
 	micros         = int(1e6)
 )
 
-func TestDecryptPrice(t *testing.T) {
-	d := New(TypePrice, encryptionKey, integrityKey)
-	var (
-		price float64
-		err   error
-	)
-	price, err = d.DecryptPrice(encryptedPrice, micros)
-	if err != nil {
-		t.Error(err)
-	}
-	if price != decryptedPrice {
-		t.Error("decrypt price failed")
-	}
-}
-
-func TestEncryptPrice(t *testing.T) {
-	d := New(TypePrice, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	dst, err = d.EncryptPrice(decryptedPrice, dst, initVector, micros)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Equal(dst, encryptedPrice) {
-		t.Error("encrypt price failed")
-	}
+func TestPrice(t *testing.T) {
+	t.Run("decrypt", func(t *testing.T) {
+		d := New(TypePrice, encryptionKey, integrityKey)
+		var (
+			price float64
+			err   error
+		)
+		price, err = d.DecryptPrice(encryptedPrice, micros)
+		if err != nil {
+			t.Error(err)
+		}
+		if price != decryptedPrice {
+			t.Error("decrypt price failed")
+		}
+	})
+	t.Run("encrypt", func(t *testing.T) {
+		d := New(TypePrice, encryptionKey, integrityKey)
+		var (
+			dst []byte
+			err error
+		)
+		dst, err = d.EncryptPrice(decryptedPrice, dst, initVector, micros)
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(dst, encryptedPrice) {
+			t.Error("encrypt price failed")
+		}
+	})
 }
 
 func BenchmarkDecryptPrice(b *testing.B) {

@@ -13,34 +13,35 @@ var (
 	}
 )
 
-func TestWebSafeDecode(t *testing.T) {
-	d := New(TypePrice, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	dst, err = d.WebSafeDecode(dst, webSafeStr)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Equal(dst, nwebSafeStr) {
-		t.Error("web safe decode failed")
-	}
-}
-
-func TestWebSafeEncode(t *testing.T) {
-	d := New(TypePrice, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	dst, err = d.WebSafeEncode(dst, nwebSafeStr)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Equal(dst, webSafeStr) {
-		t.Error("web safe encode failed")
-	}
+func TestWebSafe(t *testing.T) {
+	t.Run("decode", func(t *testing.T) {
+		d := New(TypePrice, encryptionKey, integrityKey)
+		var (
+			dst []byte
+			err error
+		)
+		dst, err = d.WebSafeDecode(dst, webSafeStr)
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(dst, nwebSafeStr) {
+			t.Error("web safe decode failed")
+		}
+	})
+	t.Run("encode", func(t *testing.T) {
+		d := New(TypePrice, encryptionKey, integrityKey)
+		var (
+			dst []byte
+			err error
+		)
+		dst, err = d.WebSafeEncode(dst, nwebSafeStr)
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(dst, webSafeStr) {
+			t.Error("web safe encode failed")
+		}
+	})
 }
 
 func BenchmarkWebSafeDecode(b *testing.B) {

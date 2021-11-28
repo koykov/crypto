@@ -14,38 +14,39 @@ var (
 	decryptedAdUUID = []byte("00010203-0405-0607-0809-0a0b0c0d0e0f")
 )
 
-func TestDecryptAdID(t *testing.T) {
-	d := New(TypeAdID, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	dst, err = d.Decrypt(dst, encryptedAdID)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Equal(dst, decryptedAdID) {
-		t.Error("decrypt AdID failed")
-	}
-	dst, _ = d.DecryptFn(dst[:0], encryptedAdID, ConvPayloadToUUID)
-	if !bytes.Equal(dst, decryptedAdUUID) {
-		t.Error("decrypt AdID UUID failed")
-	}
-}
-
-func TestEncryptAdID(t *testing.T) {
-	d := New(TypeAdID, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	dst, err = d.Encrypt(dst, initVector, decryptedAdID)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Equal(dst, encryptedAdID) {
-		t.Error("encrypt AdID failed")
-	}
+func TestAdID(t *testing.T) {
+	t.Run("decrypt", func(t *testing.T) {
+		d := New(TypeAdID, encryptionKey, integrityKey)
+		var (
+			dst []byte
+			err error
+		)
+		dst, err = d.Decrypt(dst, encryptedAdID)
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(dst, decryptedAdID) {
+			t.Error("decrypt AdID failed")
+		}
+		dst, _ = d.DecryptFn(dst[:0], encryptedAdID, ConvPayloadToUUID)
+		if !bytes.Equal(dst, decryptedAdUUID) {
+			t.Error("decrypt AdID UUID failed")
+		}
+	})
+	t.Run("encrypt", func(t *testing.T) {
+		d := New(TypeAdID, encryptionKey, integrityKey)
+		var (
+			dst []byte
+			err error
+		)
+		dst, err = d.Encrypt(dst, initVector, decryptedAdID)
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(dst, encryptedAdID) {
+			t.Error("encrypt AdID failed")
+		}
+	})
 }
 
 func BenchmarkDecryptAdID(b *testing.B) {
