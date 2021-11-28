@@ -46,132 +46,109 @@ func TestHyperlocal(t *testing.T) {
 	})
 }
 
-func BenchmarkDecryptHyperlocal(b *testing.B) {
-	d := New(TypeHyperlocal, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		dst = dst[:0]
-		dst, err = d.Decrypt(dst, encryptedHyperlocal)
-		if err != nil {
-			b.Error(err)
-		}
-		if !bytes.Equal(dst, decryptedHyperlocal) {
-			b.Error("decrypt Hyperlocal failed")
-		}
-		d.Reset()
-	}
-}
-
-func BenchmarkEncryptHyperlocal(b *testing.B) {
-	d := New(TypeHyperlocal, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		dst = dst[:0]
-		dst, err = d.Encrypt(dst, initVector, decryptedHyperlocal)
-		if err != nil {
-			b.Error(err)
-		}
-		if !bytes.Equal(dst, encryptedHyperlocal) {
-			b.Error("encrypt hyperlocal failed")
-		}
-		d.Reset()
-	}
-}
-
-func benchmarkHyperlocalDecryptParallel(b *testing.B, n int) {
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	b.RunParallel(func(pb *testing.PB) {
+func BenchmarkHyperlocal(b *testing.B) {
+	b.Run("decrypt", func(b *testing.B) {
+		d := New(TypeHyperlocal, encryptionKey, integrityKey)
 		var (
 			dst []byte
 			err error
 		)
-		for pb.Next() {
-			for i := 0; i < n; i++ {
-				d := Acquire(TypeHyperlocal, encryptionKey, integrityKey)
-
-				dst = dst[:0]
-				dst, err = d.Decrypt(dst, encryptedHyperlocal)
-				if err != nil {
-					b.Error(err)
-				}
-				if !bytes.Equal(dst, decryptedHyperlocal) {
-					b.Error("decrypt hyperlocal failed")
-				}
-
-				Release(d)
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			dst = dst[:0]
+			dst, err = d.Decrypt(dst, encryptedHyperlocal)
+			if err != nil {
+				b.Error(err)
 			}
+			if !bytes.Equal(dst, decryptedHyperlocal) {
+				b.Error("decrypt Hyperlocal failed")
+			}
+			d.Reset()
 		}
 	})
-}
-
-func BenchmarkDecryptHyperlocalParallel1(b *testing.B) {
-	benchmarkHyperlocalDecryptParallel(b, 1)
-}
-
-func BenchmarkDecryptHyperlocalParallel10(b *testing.B) {
-	benchmarkHyperlocalDecryptParallel(b, 10)
-}
-
-func BenchmarkDecryptHyperlocalParallel100(b *testing.B) {
-	benchmarkHyperlocalDecryptParallel(b, 100)
-}
-
-func BenchmarkDecryptHyperlocalParallel1000(b *testing.B) {
-	benchmarkHyperlocalDecryptParallel(b, 1000)
-}
-
-func benchmarkHyperlocalEncryptParallel(b *testing.B, n int) {
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	b.RunParallel(func(pb *testing.PB) {
+	b.Run("encrypt", func(b *testing.B) {
+		d := New(TypeHyperlocal, encryptionKey, integrityKey)
 		var (
 			dst []byte
 			err error
 		)
-		for pb.Next() {
-			for i := 0; i < n; i++ {
-				d := Acquire(TypeHyperlocal, encryptionKey, integrityKey)
-
-				dst = dst[:0]
-				dst, err = d.Encrypt(dst, initVector, decryptedHyperlocal)
-				if err != nil {
-					b.Error(err)
-				}
-				if !bytes.Equal(dst, encryptedHyperlocal) {
-					b.Error("encrypt hyperlocal failed")
-				}
-
-				Release(d)
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			dst = dst[:0]
+			dst, err = d.Encrypt(dst, initVector, decryptedHyperlocal)
+			if err != nil {
+				b.Error(err)
 			}
+			if !bytes.Equal(dst, encryptedHyperlocal) {
+				b.Error("encrypt hyperlocal failed")
+			}
+			d.Reset()
 		}
 	})
-}
 
-func BenchmarkEncryptHyperlocalParallel1(b *testing.B) {
-	benchmarkHyperlocalEncryptParallel(b, 1)
-}
+	decFn := func(b *testing.B, n int) {
+		b.ResetTimer()
+		b.ReportAllocs()
 
-func BenchmarkEncryptHyperlocalParallel10(b *testing.B) {
-	benchmarkHyperlocalEncryptParallel(b, 10)
-}
+		b.RunParallel(func(pb *testing.PB) {
+			var (
+				dst []byte
+				err error
+			)
+			for pb.Next() {
+				for i := 0; i < n; i++ {
+					d := Acquire(TypeHyperlocal, encryptionKey, integrityKey)
 
-func BenchmarkEncryptHyperlocalParallel100(b *testing.B) {
-	benchmarkHyperlocalEncryptParallel(b, 100)
-}
+					dst = dst[:0]
+					dst, err = d.Decrypt(dst, encryptedHyperlocal)
+					if err != nil {
+						b.Error(err)
+					}
+					if !bytes.Equal(dst, decryptedHyperlocal) {
+						b.Error("decrypt hyperlocal failed")
+					}
 
-func BenchmarkEncryptHyperlocalParallel1000(b *testing.B) {
-	benchmarkHyperlocalEncryptParallel(b, 1000)
+					Release(d)
+				}
+			}
+		})
+	}
+	b.Run("decrypt parallel 1", func(b *testing.B) { decFn(b, 1) })
+	b.Run("decrypt parallel 10", func(b *testing.B) { decFn(b, 10) })
+	b.Run("decrypt parallel 100", func(b *testing.B) { decFn(b, 100) })
+	b.Run("decrypt parallel 1000", func(b *testing.B) { decFn(b, 1000) })
+
+	encFn := func(b *testing.B, n int) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		b.RunParallel(func(pb *testing.PB) {
+			var (
+				dst []byte
+				err error
+			)
+			for pb.Next() {
+				for i := 0; i < n; i++ {
+					d := Acquire(TypeHyperlocal, encryptionKey, integrityKey)
+
+					dst = dst[:0]
+					dst, err = d.Encrypt(dst, initVector, decryptedHyperlocal)
+					if err != nil {
+						b.Error(err)
+					}
+					if !bytes.Equal(dst, encryptedHyperlocal) {
+						b.Error("encrypt hyperlocal failed")
+					}
+
+					Release(d)
+				}
+			}
+		})
+	}
+	b.Run("encrypt parallel 1", func(b *testing.B) { encFn(b, 1) })
+	b.Run("encrypt parallel 10", func(b *testing.B) { encFn(b, 10) })
+	b.Run("encrypt parallel 100", func(b *testing.B) { encFn(b, 100) })
+	b.Run("encrypt parallel 1000", func(b *testing.B) { encFn(b, 1000) })
 }
