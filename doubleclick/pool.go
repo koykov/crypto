@@ -2,12 +2,10 @@ package doubleclick
 
 import "sync"
 
-// DoubleClick pool.
 type Pool struct {
 	p sync.Pool
 }
 
-// Default instance of the pool.
 var P Pool
 
 // Get DC instance from the pool.
@@ -24,7 +22,7 @@ func (p *Pool) Get(typ Type, encryptionKey, integrityKey []byte) *DoubleClick {
 	return x
 }
 
-// Put DC instance to the pool.
+// Put instance of DC to the pool.
 func (p *Pool) Put(x *DoubleClick) {
 	x.Reset()
 	p.p.Put(x)

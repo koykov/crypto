@@ -10,10 +10,10 @@ const (
 	dashPosClockSeq     = 10
 )
 
-// The signature of convert function.
+// ConvFn is a signature of convert function.
 type ConvFn func(dst, src []byte) []byte
 
-// Convert payload to UUID.
+// ConvPayloadToUUID converts payload to UUID.
 func ConvPayloadToUUID(dst, src []byte) []byte {
 	_ = src[len(src)-1]
 	for i := 0; i < len(src); i++ {

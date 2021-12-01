@@ -6,24 +6,23 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
-	"errors"
 	"hash"
 )
 
-// The type constant of supported DoubleClick types.
+// Type is a type constant of supported DoubleClick types.
 type Type int
 
 const (
-	// Advertising ID
+	// TypeAdID  is an Advertising ID
 	// https://developers.google.com/authorized-buyers/rtb/response-guide/decrypt-advertising-id
 	TypeAdID Type = iota
-	// iOS ID for advertisers
+	// TypeIDFA is an iOS ID for advertisers
 	// https://support.google.com/authorizedbuyers/answer/3221407
 	TypeIDFA
-	// Ad Exchange RTB protocol price
+	// TypePrice is an Ad Exchange RTB protocol price
 	// https://developers.google.com/authorized-buyers/rtb/response-guide/decrypt-price
 	TypePrice
-	// Hyperlocal Targeting Signals
+	// TypeHyperlocal is a Hyperlocal Targeting Signals
 	// https://developers.google.com/authorized-buyers/rtb/response-guide/decrypt-hyperlocal
 	TypeHyperlocal
 
@@ -52,7 +51,7 @@ const (
 	payloadLenPrice = 8
 )
 
-// Encryption and decryption support for the DoubleClick Ad Exchange RTB protocol.
+// DoubleClick is an encryption and decryption support for the DoubleClick Ad Exchange RTB protocol.
 //
 // Encrypted payloads are wrapped by "packages" in the general format:
 // initVector:16 || E(payload:?) || I(signature:4)
@@ -70,19 +69,9 @@ type DoubleClick struct {
 	buf []byte
 }
 
-var (
-	// Errors
-	ErrUnkType       = errors.New("unknown type")
-	ErrBadInitvLen   = errors.New("unsupported init vector length")
-	ErrBadMsgLen     = errors.New("unsupported message length")
-	ErrBadPlainLen   = errors.New("unsupported plain source length")
-	ErrSignCheckFail = errors.New("signature check failed")
-	ErrNegativePad   = errors.New("negative base64 pad index")
+var b64Pad = []byte("=")
 
-	b64Pad = []byte("=")
-)
-
-// Make new instance of DoubleClick.
+// New makes new instance of DoubleClick.
 //
 // Better use pool instead of direct using New().
 func New(typ Type, encryptionKey, integrityKey []byte) *DoubleClick {
@@ -91,7 +80,7 @@ func New(typ Type, encryptionKey, integrityKey []byte) *DoubleClick {
 	return d
 }
 
-// Set the keys.
+// SetKeys sets encryption and integrity keys.
 //
 // During first keys set will be initialized HMAC helpers.
 func (d *DoubleClick) SetKeys(encryptionKey, integrityKey []byte) {
@@ -105,14 +94,14 @@ func (d *DoubleClick) SetKeys(encryptionKey, integrityKey []byte) {
 	}
 }
 
-// Common encryption method.
+// Encrypt is a common encryption method.
 //
 // Encrypts plain to dst using initVec.
 func (d *DoubleClick) Encrypt(dst, initVec, plain []byte) ([]byte, error) {
 	return d.EncryptFn(dst, initVec, plain, nil)
 }
 
-// Encryption method with post-encryption convert func.
+// EncryptFn performs encryption and apply post-encryption convert func.
 func (d *DoubleClick) EncryptFn(dst, initVec, plain []byte, convFn ConvFn) ([]byte, error) {
 	var plainLen int
 	switch d.typ {
@@ -135,7 +124,7 @@ func (d *DoubleClick) EncryptFn(dst, initVec, plain []byte, convFn ConvFn) ([]by
 	return d.encrypt(dst, initVec, plain, plainLen, convFn)
 }
 
-// Encrypt price.
+// EncryptPrice is a price encryption method.
 //
 // See https://developers.google.com/authorized-buyers/rtb/response-guide/decrypt-price for details.
 func (d *DoubleClick) EncryptPrice(price float64, dst, initVec []byte, micros int) ([]byte, error) {
@@ -202,14 +191,14 @@ func (d *DoubleClick) encrypt(dst, initVec, plain []byte, plainLen int, convFn C
 	return dst, nil
 }
 
-// Common decryption method.
+// Decrypt is a common decryption method.
 //
 // Decrypts cipher to dst.
 func (d *DoubleClick) Decrypt(dst, cipher []byte) ([]byte, error) {
 	return d.DecryptFn(dst, cipher, nil)
 }
 
-// Decryption method with post-decryption convert func.
+// DecryptFn performs decryption and apply post-decryption convert func.
 func (d *DoubleClick) DecryptFn(dst, cipher []byte, convFn ConvFn) ([]byte, error) {
 	var (
 		msgLen, payloadLen int
@@ -238,7 +227,7 @@ func (d *DoubleClick) DecryptFn(dst, cipher []byte, convFn ConvFn) ([]byte, erro
 	return d.decrypt(dst, cipher, payloadLen, convFn)
 }
 
-// Decrypt price.
+// DecryptPrice is a price decryption method.
 //
 // See https://developers.google.com/authorized-buyers/rtb/response-guide/decrypt-price for details.
 func (d *DoubleClick) DecryptPrice(cipher []byte, micros int) (float64, error) {
@@ -259,6 +248,7 @@ func (d *DoubleClick) DecryptPrice(cipher []byte, micros int) (float64, error) {
 	return float64(price) / float64(micros), nil
 }
 
+// Common decryption helper.
 func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int, convFn ConvFn) ([]byte, error) {
 	// Split message to parts (init vector, payload, integrity sign).
 	initVector := cipher[initVectorOffset:initVectorLen]
@@ -305,7 +295,7 @@ func (d *DoubleClick) decrypt(dst, cipher []byte, payloadLen int, convFn ConvFn)
 	return dst, nil
 }
 
-// Encode string to web-safe base64.
+// WebSafeEncode encodes string to web-safe base64.
 //
 // Note that this method will trim base64 paddings.
 func (d *DoubleClick) WebSafeEncode(dst, plain []byte) ([]byte, error) {
@@ -327,7 +317,7 @@ func (d *DoubleClick) WebSafeEncode(dst, plain []byte) ([]byte, error) {
 	return dst, nil
 }
 
-// Decode web-safe base64 string.
+// WebSafeDecode decodes web-safe base64 string.
 //
 // Input string must not contain base64 paddings.
 func (d *DoubleClick) WebSafeDecode(dst, wsStr []byte) ([]byte, error) {
