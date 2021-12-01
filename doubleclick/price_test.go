@@ -45,130 +45,109 @@ func TestPrice(t *testing.T) {
 	})
 }
 
-func BenchmarkDecryptPrice(b *testing.B) {
-	d := New(TypePrice, encryptionKey, integrityKey)
-	var (
-		price float64
-		err   error
-	)
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		price, err = d.DecryptPrice(encryptedPrice, micros)
-		if err != nil {
-			b.Error(err)
-		}
-		if price != decryptedPrice {
-			b.Error("decrypt price failed")
-		}
-		d.Reset()
-	}
-}
-
-func BenchmarkEncryptPrice(b *testing.B) {
-	d := New(TypePrice, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		dst = dst[:0]
-		dst, err = d.EncryptPrice(decryptedPrice, dst, initVector, micros)
-		if err != nil {
-			b.Error(err)
-		}
-		if !bytes.Equal(dst, encryptedPrice) {
-			b.Error("encrypt price failed")
-		}
-		d.Reset()
-	}
-}
-
-func benchmarkPriceDecryptParallel(b *testing.B, n int) {
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	b.RunParallel(func(pb *testing.PB) {
+func BenchmarkPrice(b *testing.B) {
+	b.Run("decrypt", func(b *testing.B) {
+		d := New(TypePrice, encryptionKey, integrityKey)
 		var (
 			price float64
 			err   error
 		)
-		for pb.Next() {
-			for i := 0; i < n; i++ {
-				d := Acquire(TypePrice, encryptionKey, integrityKey)
-
-				price, err = d.DecryptPrice(encryptedPrice, micros)
-				if err != nil {
-					b.Error(err)
-				}
-				if price != decryptedPrice {
-					b.Error("decrypt price failed")
-				}
-
-				Release(d)
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			price, err = d.DecryptPrice(encryptedPrice, micros)
+			if err != nil {
+				b.Error(err)
 			}
+			if price != decryptedPrice {
+				b.Error("decrypt price failed")
+			}
+			d.Reset()
 		}
 	})
-}
-
-func BenchmarkDecryptPriceParallel1(b *testing.B) {
-	benchmarkPriceDecryptParallel(b, 1)
-}
-
-func BenchmarkDecryptPriceParallel10(b *testing.B) {
-	benchmarkPriceDecryptParallel(b, 10)
-}
-
-func BenchmarkDecryptPriceParallel100(b *testing.B) {
-	benchmarkPriceDecryptParallel(b, 100)
-}
-
-func BenchmarkDecryptPriceParallel1000(b *testing.B) {
-	benchmarkPriceDecryptParallel(b, 1000)
-}
-
-func benchmarkPriceEncryptParallel(b *testing.B, n int) {
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	b.RunParallel(func(pb *testing.PB) {
+	b.Run("encrypt", func(b *testing.B) {
+		d := New(TypePrice, encryptionKey, integrityKey)
 		var (
 			dst []byte
 			err error
 		)
-		for pb.Next() {
-			for i := 0; i < n; i++ {
-				d := Acquire(TypePrice, encryptionKey, integrityKey)
-
-				dst = dst[:0]
-				dst, err = d.EncryptPrice(decryptedPrice, dst, initVector, micros)
-				if err != nil {
-					b.Error(err)
-				}
-				if !bytes.Equal(dst, encryptedPrice) {
-					b.Error("encrypt price failed")
-				}
-
-				Release(d)
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			dst = dst[:0]
+			dst, err = d.EncryptPrice(decryptedPrice, dst, initVector, micros)
+			if err != nil {
+				b.Error(err)
 			}
+			if !bytes.Equal(dst, encryptedPrice) {
+				b.Error("encrypt price failed")
+			}
+			d.Reset()
 		}
 	})
 }
 
-func BenchmarkEncryptPriceParallel1(b *testing.B) {
-	benchmarkPriceEncryptParallel(b, 1)
-}
+func BenchmarkPriceParallel(b *testing.B) {
+	decFn := func(b *testing.B, n int) {
+		b.ResetTimer()
+		b.ReportAllocs()
 
-func BenchmarkEncryptPriceParallel10(b *testing.B) {
-	benchmarkPriceEncryptParallel(b, 10)
-}
+		b.RunParallel(func(pb *testing.PB) {
+			var (
+				price float64
+				err   error
+			)
+			for pb.Next() {
+				for i := 0; i < n; i++ {
+					d := Acquire(TypePrice, encryptionKey, integrityKey)
 
-func BenchmarkEncryptPriceParallel100(b *testing.B) {
-	benchmarkPriceEncryptParallel(b, 100)
-}
+					price, err = d.DecryptPrice(encryptedPrice, micros)
+					if err != nil {
+						b.Error(err)
+					}
+					if price != decryptedPrice {
+						b.Error("decrypt price failed")
+					}
 
-func BenchmarkEncryptPriceParallel1000(b *testing.B) {
-	benchmarkPriceEncryptParallel(b, 1000)
+					Release(d)
+				}
+			}
+		})
+	}
+	b.Run("decrypt 1", func(b *testing.B) { decFn(b, 1) })
+	b.Run("decrypt 10", func(b *testing.B) { decFn(b, 10) })
+	b.Run("decrypt 100", func(b *testing.B) { decFn(b, 100) })
+	b.Run("decrypt 1000", func(b *testing.B) { decFn(b, 1000) })
+
+	encFn := func(b *testing.B, n int) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		b.RunParallel(func(pb *testing.PB) {
+			var (
+				dst []byte
+				err error
+			)
+			for pb.Next() {
+				for i := 0; i < n; i++ {
+					d := Acquire(TypePrice, encryptionKey, integrityKey)
+
+					dst = dst[:0]
+					dst, err = d.EncryptPrice(decryptedPrice, dst, initVector, micros)
+					if err != nil {
+						b.Error(err)
+					}
+					if !bytes.Equal(dst, encryptedPrice) {
+						b.Error("encrypt price failed")
+					}
+
+					Release(d)
+				}
+			}
+		})
+	}
+	b.Run("encrypt 1", func(b *testing.B) { encFn(b, 1) })
+	b.Run("encrypt 10", func(b *testing.B) { encFn(b, 10) })
+	b.Run("encrypt 100", func(b *testing.B) { encFn(b, 100) })
+	b.Run("encrypt 1000", func(b *testing.B) { encFn(b, 1000) })
 }
