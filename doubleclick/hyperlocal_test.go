@@ -87,7 +87,9 @@ func BenchmarkHyperlocal(b *testing.B) {
 			d.Reset()
 		}
 	})
+}
 
+func BenchmarkHyperlocalParallel(b *testing.B) {
 	decFn := func(b *testing.B, n int) {
 		b.ResetTimer()
 		b.ReportAllocs()
@@ -115,10 +117,10 @@ func BenchmarkHyperlocal(b *testing.B) {
 			}
 		})
 	}
-	b.Run("decrypt parallel 1", func(b *testing.B) { decFn(b, 1) })
-	b.Run("decrypt parallel 10", func(b *testing.B) { decFn(b, 10) })
-	b.Run("decrypt parallel 100", func(b *testing.B) { decFn(b, 100) })
-	b.Run("decrypt parallel 1000", func(b *testing.B) { decFn(b, 1000) })
+	b.Run("decrypt 1", func(b *testing.B) { decFn(b, 1) })
+	b.Run("decrypt 10", func(b *testing.B) { decFn(b, 10) })
+	b.Run("decrypt 100", func(b *testing.B) { decFn(b, 100) })
+	b.Run("decrypt 1000", func(b *testing.B) { decFn(b, 1000) })
 
 	encFn := func(b *testing.B, n int) {
 		b.ResetTimer()
@@ -147,8 +149,8 @@ func BenchmarkHyperlocal(b *testing.B) {
 			}
 		})
 	}
-	b.Run("encrypt parallel 1", func(b *testing.B) { encFn(b, 1) })
-	b.Run("encrypt parallel 10", func(b *testing.B) { encFn(b, 10) })
-	b.Run("encrypt parallel 100", func(b *testing.B) { encFn(b, 100) })
-	b.Run("encrypt parallel 1000", func(b *testing.B) { encFn(b, 1000) })
+	b.Run("encrypt 1", func(b *testing.B) { encFn(b, 1) })
+	b.Run("encrypt 10", func(b *testing.B) { encFn(b, 10) })
+	b.Run("encrypt 100", func(b *testing.B) { encFn(b, 100) })
+	b.Run("encrypt 1000", func(b *testing.B) { encFn(b, 1000) })
 }
