@@ -44,132 +44,111 @@ func TestIDFA(t *testing.T) {
 	})
 }
 
-func BenchmarkDecryptIDFA(b *testing.B) {
-	d := New(TypeIDFA, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		dst = dst[:0]
-		dst, err = d.Decrypt(dst, encryptedIDFA)
-		if err != nil {
-			b.Error(err)
-		}
-		if !bytes.Equal(dst, decryptedIDFA) {
-			b.Error("decrypt IDFA failed")
-		}
-		d.Reset()
-	}
-}
-
-func BenchmarkEncryptIDFA(b *testing.B) {
-	d := New(TypeIDFA, encryptionKey, integrityKey)
-	var (
-		dst []byte
-		err error
-	)
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		dst = dst[:0]
-		dst, err = d.Encrypt(dst, initVector, decryptedIDFA)
-		if err != nil {
-			b.Error(err)
-		}
-		if !bytes.Equal(dst, encryptedIDFA) {
-			b.Error("encrypt IDFA failed")
-		}
-		d.Reset()
-	}
-}
-
-func benchmarkIDFADecryptParallel(b *testing.B, n int) {
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	b.RunParallel(func(pb *testing.PB) {
+func BenchmarkIDFA(b *testing.B) {
+	b.Run("decrypt", func(b *testing.B) {
+		d := New(TypeIDFA, encryptionKey, integrityKey)
 		var (
 			dst []byte
 			err error
 		)
-		for pb.Next() {
-			for i := 0; i < n; i++ {
-				d := Acquire(TypeIDFA, encryptionKey, integrityKey)
-
-				dst = dst[:0]
-				dst, err = d.Decrypt(dst, encryptedIDFA)
-				if err != nil {
-					b.Error(err)
-				}
-				if !bytes.Equal(dst, decryptedIDFA) {
-					b.Error("decrypt IDFA failed")
-				}
-
-				Release(d)
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			dst = dst[:0]
+			dst, err = d.Decrypt(dst, encryptedIDFA)
+			if err != nil {
+				b.Error(err)
 			}
+			if !bytes.Equal(dst, decryptedIDFA) {
+				b.Error("decrypt IDFA failed")
+			}
+			d.Reset()
 		}
 	})
-}
-
-func BenchmarkDecryptIDFAParallel1(b *testing.B) {
-	benchmarkIDFADecryptParallel(b, 1)
-}
-
-func BenchmarkDecryptIDFAParallel10(b *testing.B) {
-	benchmarkIDFADecryptParallel(b, 10)
-}
-
-func BenchmarkDecryptIDFAParallel100(b *testing.B) {
-	benchmarkIDFADecryptParallel(b, 100)
-}
-
-func BenchmarkDecryptIDFAParallel1000(b *testing.B) {
-	benchmarkIDFADecryptParallel(b, 1000)
-}
-
-func benchmarkIDFAEncryptParallel(b *testing.B, n int) {
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	b.RunParallel(func(pb *testing.PB) {
+	b.Run("encrypt", func(b *testing.B) {
+		d := New(TypeIDFA, encryptionKey, integrityKey)
 		var (
 			dst []byte
 			err error
 		)
-		for pb.Next() {
-			for i := 0; i < n; i++ {
-				d := Acquire(TypeIDFA, encryptionKey, integrityKey)
-
-				dst = dst[:0]
-				dst, err = d.Encrypt(dst, initVector, decryptedIDFA)
-				if err != nil {
-					b.Error(err)
-				}
-				if !bytes.Equal(dst, encryptedIDFA) {
-					b.Error("encrypt IDFA failed")
-				}
-
-				Release(d)
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			dst = dst[:0]
+			dst, err = d.Encrypt(dst, initVector, decryptedIDFA)
+			if err != nil {
+				b.Error(err)
 			}
+			if !bytes.Equal(dst, encryptedIDFA) {
+				b.Error("encrypt IDFA failed")
+			}
+			d.Reset()
 		}
 	})
 }
 
-func BenchmarkEncryptIDFAParallel1(b *testing.B) {
-	benchmarkIDFAEncryptParallel(b, 1)
-}
+func BenchmarkIDFAParallel(b *testing.B) {
+	decFn := func(b *testing.B, n int) {
+		b.ResetTimer()
+		b.ReportAllocs()
 
-func BenchmarkEncryptIDFAParallel10(b *testing.B) {
-	benchmarkIDFAEncryptParallel(b, 10)
-}
+		b.RunParallel(func(pb *testing.PB) {
+			var (
+				dst []byte
+				err error
+			)
+			for pb.Next() {
+				for i := 0; i < n; i++ {
+					d := Acquire(TypeIDFA, encryptionKey, integrityKey)
 
-func BenchmarkEncryptIDFAParallel100(b *testing.B) {
-	benchmarkIDFAEncryptParallel(b, 100)
-}
+					dst = dst[:0]
+					dst, err = d.Decrypt(dst, encryptedIDFA)
+					if err != nil {
+						b.Error(err)
+					}
+					if !bytes.Equal(dst, decryptedIDFA) {
+						b.Error("decrypt IDFA failed")
+					}
 
-func BenchmarkEncryptIDFAParallel1000(b *testing.B) {
-	benchmarkIDFAEncryptParallel(b, 1000)
+					Release(d)
+				}
+			}
+		})
+	}
+	b.Run("decrypt 1", func(b *testing.B) { decFn(b, 1) })
+	b.Run("decrypt 10", func(b *testing.B) { decFn(b, 10) })
+	b.Run("decrypt 100", func(b *testing.B) { decFn(b, 100) })
+	b.Run("decrypt 1000", func(b *testing.B) { decFn(b, 1000) })
+
+	encFn := func(b *testing.B, n int) {
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		b.RunParallel(func(pb *testing.PB) {
+			var (
+				dst []byte
+				err error
+			)
+			for pb.Next() {
+				for i := 0; i < n; i++ {
+					d := Acquire(TypeIDFA, encryptionKey, integrityKey)
+
+					dst = dst[:0]
+					dst, err = d.Encrypt(dst, initVector, decryptedIDFA)
+					if err != nil {
+						b.Error(err)
+					}
+					if !bytes.Equal(dst, encryptedIDFA) {
+						b.Error("encrypt IDFA failed")
+					}
+
+					Release(d)
+				}
+			}
+		})
+	}
+	b.Run("encrypt 1", func(b *testing.B) { encFn(b, 1) })
+	b.Run("encrypt 10", func(b *testing.B) { encFn(b, 10) })
+	b.Run("encrypt 100", func(b *testing.B) { encFn(b, 100) })
+	b.Run("encrypt 1000", func(b *testing.B) { encFn(b, 1000) })
 }
