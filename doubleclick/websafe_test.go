@@ -44,42 +44,43 @@ func TestWebSafe(t *testing.T) {
 	})
 }
 
-func BenchmarkWebSafeDecode(b *testing.B) {
-	var (
-		dst []byte
-		err error
-	)
-	d := New(TypePrice, encryptionKey, integrityKey)
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		dst = dst[:0]
-		dst, err = d.WebSafeDecode(dst, webSafeStr)
-		if err != nil {
-			b.Error(err)
+func BenchmarkWebSafe(b *testing.B) {
+	b.Run("decrypt", func(b *testing.B) {
+		var (
+			dst []byte
+			err error
+		)
+		d := New(TypePrice, encryptionKey, integrityKey)
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			dst = dst[:0]
+			dst, err = d.WebSafeDecode(dst, webSafeStr)
+			if err != nil {
+				b.Error(err)
+			}
+			if !bytes.Equal(dst, nwebSafeStr) {
+				b.Error("web safe decode failed")
+			}
 		}
-		if !bytes.Equal(dst, nwebSafeStr) {
-			b.Error("web safe decode failed")
+	})
+	b.Run("encrypt", func(b *testing.B) {
+		var (
+			dst []byte
+			err error
+		)
+		d := New(TypePrice, encryptionKey, integrityKey)
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			dst = dst[:0]
+			dst, err = d.WebSafeEncode(dst, nwebSafeStr)
+			if err != nil {
+				b.Error(err)
+			}
+			if !bytes.Equal(dst, webSafeStr) {
+				b.Error("web safe encode failed")
+			}
 		}
-	}
-}
-
-func BenchmarkWebSafeEncode(b *testing.B) {
-	var (
-		dst []byte
-		err error
-	)
-	d := New(TypePrice, encryptionKey, integrityKey)
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		dst = dst[:0]
-		dst, err = d.WebSafeEncode(dst, nwebSafeStr)
-		if err != nil {
-			b.Error(err)
-		}
-		if !bytes.Equal(dst, webSafeStr) {
-			b.Error("web safe encode failed")
-		}
-	}
+	})
 }
